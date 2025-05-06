@@ -1,3 +1,4 @@
 *.md
 *.jpg
 /chroma_store
+*.sqlite3

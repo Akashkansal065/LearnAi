@@ -16,3 +16,6 @@ langchain-community
 langchain-ollama
 langchain-core 
 langchain
+pdfminer.six==20221105
+unstructured[pdf]
+unstructured[all-docs]

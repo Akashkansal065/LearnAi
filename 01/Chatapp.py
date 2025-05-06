@@ -1,4 +1,5 @@
 import os
+import pathlib
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_community.document_loaders import UnstructuredPDFLoader
 import traceback
@@ -7,14 +8,19 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
 from langchain_core.runnables import RunnablePassthrough
 from chromadb import PersistentClient
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
+from ollama_ocr import OCRProcessor
+from langchain_core.documents import Document
+
 
 CHROMA_PATH = "./chroma_store"
 EMBEDDING_MODEL = "snowflake-arctic-embed2"
 LLM_MODEL = 'gemma3:12b'
+OCR_MODEL_NAME = 'llama3.2-vision'
 
 
 class Chat:
@@ -22,34 +28,33 @@ class Chat:
         self.vector_store_dir = vector_store_dir
         self.chat_history = []
         self.OUTPUT_DIR = "./output_md"
-        self.chat_history_manager = StreamlitChatMessageHistory()  # Manages chat history
+        self.chat_history_manager = StreamlitChatMessageHistory()
+        global CHROMA_PATH
+        CHROMA_PATH = vector_store_dir  # Use the path provided during instantiation
+        self.llm = ChatOllama(model=LLM_MODEL, temperature=0.1)
+        self.output_dir = "./output_md"
+        print(f"Initialized LLM: {LLM_MODEL}")
+        # Check if OCR processor can be initialized (optional, depends on OCRProcessor design)
+        # if OCR_PROCESSOR_AVAILABLE:
+        #     try:
+        #         # Test initialization if needed, handle potential errors
+        #         _ = OCRProcessor(model_name=OCR_MODEL_NAME)
+        #         print(f"OCR Processor using model '{OCR_MODEL_NAME}' seems available.")
+        #     except Exception as e:
+        #         print(f"Warning: Could not initialize OCRProcessor: {e}")
 
     def list_chroma_collections(self):
         client = PersistentClient(path=self.vector_store_dir)
         collections = client.list_collections()
         return collections
 
-    def create_prompt_template(self):
-        """Create a ChatPromptTemplate with message placeholders."""
-        prompt_template = ChatPromptTemplate.from_messages([
-            ("system", "You are an assistant that answers questions based on the uploaded documents."),
-            ("user", "{user_input}")
-        ])
-        return prompt_template
-
-    def get_default_collection(self):
-        collections = self.list_collections()
-        if collections:
-            return collections[0]
-        return None
-
-    def get_collection_metadata(self, collection_name):
-        try:
-            collection = self.db.get_collection(name=collection_name)
-            return collection.metadata
-        except Exception as e:
-            print(f"Error getting metadata for {collection_name}: {e}")
-            return {}
+    # def create_prompt_template(self):
+    #     """Create a ChatPromptTemplate with message placeholders."""
+    #     prompt_template = ChatPromptTemplate.from_messages([
+    #         ("system", "You are an assistant that answers questions based on the uploaded documents."),
+    #         ("user", "{user_input}")
+    #     ])
+    #     return prompt_template
 
     def index_pdf(self, file_path, processing_mode: str = "text", collection_name='all'):
         """
@@ -89,12 +94,44 @@ class Chat:
                     # Requires tesseract to be installed and potentially in PATH
                     # "hi_res" strategy uses detectron2 if available, falls back to Tesseract
                     # "ocr_only" forces OCR extraction
-                    loader = UnstructuredPDFLoader(
-                        file_path,
-                        mode="single",  # Process pages individually
-                        strategy="hi_res"  # or "ocr_only" if needed
-                    )
-                    documents = loader.load()
+                    # loader = UnstructuredPDFLoader(
+                    #     file_path,
+                    #     mode="single",  # Process pages individually
+                    #     strategy="hi_res"  # or "ocr_only" if needed
+                    # )
+                    # documents = loader.load()
+                    try:
+                        # --- Use Custom OCR Processor ---
+                        print(
+                            f"Instantiating OCRProcessor with model: {OCR_MODEL_NAME}")
+                        processor = OCRProcessor(model_name=OCR_MODEL_NAME)
+
+                        print(f"Processing PDF with OCRProcessor: {file_path}")
+                        # Assuming process_image takes the pdf path and returns a single text string
+                        extracted_text = processor.process_image(
+                            image_path=file_path)
+                        print(extracted_text)
+                        output_path = pathlib.Path(
+                            self.output_dir) / f"{file_path}_output.md"
+                        print(output_path)
+                        output_path.write_text(
+                            extracted_text, encoding="utf-8")
+                        print(
+                            f"OCRProcessor finished. Extracted text length: {len(extracted_text)}")
+
+                        if extracted_text:
+                            # --- Wrap extracted text in Langchain Document object ---
+                            documents = [Document(page_content=extracted_text, metadata={
+                                                  "source": str(file_path), "processing_mode": "ocr"})]
+                        else:
+                            print("Warning: OCRProcessor returned empty text.")
+                            documents = []  # Ensure documents list is empty if OCR fails
+
+                    except Exception as ocr_error:
+                        print(
+                            f"Error during custom OCR processing: {ocr_error}")
+                        traceback.print_exc()
+                        return False  # Fail processing if OCR step fails
                 else:
                     print("Error: OCR mode only supports PDF files.")
                     return False
@@ -170,32 +207,6 @@ class Chat:
                 print("---------------------------------\n")
             traceback.print_exc()
             return False
-        # if processing_mode == "text":
-        #     loader = PyPDFLoader(file_path)
-        #     documents = loader.load()
-        # else:
-        #     processor = OCRProcessor(model_name='llama3.2-vision')
-        #     text = processor.process_image(
-        #         image_path=file_path, format_type="markdown")
-        #     output_path = pathlib.Path(self.OUTPUT_DIR) / f"temp_output.md"
-        #     output_path.write_text(text, encoding="utf-8")
-        #     documents = [Document(page_content=text, metadata={
-        #                           "source": str(file_path)})]
-
-        # splitter = RecursiveCharacterTextSplitter(
-        #     chunk_size=500, chunk_overlap=50)
-        # docs = splitter.split_documents(documents)
-        # doc_ids = [str(uuid.uuid4()) for _ in range(len(docs))]
-
-        # embeddings = OllamaEmbeddings(model="snowflake-arctic-embed2")
-        # db = Chroma.from_documents(
-        #     documents=docs,
-        #     embedding=embeddings,
-        #     ids=doc_ids,
-        #     persist_directory=self.vector_store_dir,
-        #     collection_name=collection_name
-        # )
-        # return len(docs)
 
     def get_answer(self, question: str, collection_name):
         """Retrieves relevant context from ChromaDB and generates an answer using Ollama LLM.
@@ -210,11 +221,16 @@ class Chat:
                 persist_directory=CHROMA_PATH,
                 embedding_function=embeddings, collection_name=collection_name
             )
+            print(collection_name)
             # 3. Create Retriever
+            # retriever = vectorstore.as_retriever(
+            #     search_type="similarity",  # Default, can also be "mmr"
+            #     search_kwargs={'k': 3}     # Retrieve top 3 relevant chunks
+            # )
             retriever = vectorstore.as_retriever(
-                search_type="similarity",  # Default, can also be "mmr"
-                search_kwargs={'k': 3}     # Retrieve top 3 relevant chunks
+                search_type="mmr", search_kwargs={"k": 6, "fetch_k": 10, "lambda_mult": 0.5}
             )
+
             print("Retriever created.")
             # 4. Define RAG Prompt Template
             template = """You are an assistant for question-answering tasks.
@@ -256,6 +272,56 @@ class Chat:
             import traceback
             traceback.print_exc()
             return f"Error: Could not generate answer. Details: {e}"
+
+    # --- NEW METHOD for General Chat ---
+    def get_general_answer(self, question: str, chat_history_list: list):
+        """ (Non-RAG Answer) Generates an answer using only the LLM and chat history. """
+        print(f"Generating general answer for: '{question}'")
+        try:
+            # Basic prompt for general conversation
+            # Incorporate chat history using MessagesPlaceholder
+            general_prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are a helpful AI assistant. Answer the user's question."),
+                # Placeholder for history
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{question}")
+            ])
+
+            # Create the chain (using the pre-initialized self.llm)
+            general_chain = (
+                general_prompt
+                | self.llm  # Use the initialized LLM
+                | StrOutputParser()
+            )
+
+            # Invoke the chain with the question and formatted history
+            print("Invoking general chat chain...")
+            # Format history for MessagesPlaceholder (needs list of BaseMessage objects)
+            # Assuming chat_history_list is like [{"role": "user", "content": "..."}, ...]
+            formatted_history = []
+            for msg in chat_history_list:
+                if msg["role"] == "user":
+                    formatted_history.append(
+                        HumanMessage(content=msg["content"]))
+                elif msg["role"] == "assistant":
+                    # Assuming ChatOllama produces AIMessage compatible output
+                    # If not, adjust this line based on actual message type
+                    formatted_history.append(AIMessage(content=msg["content"]))
+                    # formatted_history.append(
+                    #     self.llm.get_lc_message_type()(content=msg["content"]))
+            formatted_history.append(HumanMessage(content=question))
+
+            answer = general_chain.invoke({
+                "question": question,
+                "chat_history": formatted_history  # Pass the formatted history
+            })
+            print(f"Generated general answer: {answer}")
+            return answer
+
+        except Exception as e:
+            print(f"Error generating general answer: {e}")
+            traceback.print_exc()
+            return f"Error: Could not generate general answer. Details: {e}"
 
 # You can add a small test block here if needed
 # if __name__ == '__main__':

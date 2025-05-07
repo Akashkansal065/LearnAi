@@ -1,5 +1,6 @@
 import os
 import pathlib
+import time
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_community.document_loaders import UnstructuredPDFLoader
 import traceback
@@ -21,6 +22,7 @@ CHROMA_PATH = "./chroma_store"
 EMBEDDING_MODEL = "snowflake-arctic-embed2"
 LLM_MODEL = 'gemma3:12b'
 OCR_MODEL_NAME = 'llama3.2-vision'
+# OCR_MODEL_NAME = 'llava:13b'
 
 
 class Chat:
@@ -112,7 +114,7 @@ class Chat:
                             image_path=file_path)
                         print(extracted_text)
                         output_path = pathlib.Path(
-                            self.output_dir) / f"{file_path}_output.md"
+                            self.output_dir) / f"{str(int(time.time()))}_output.md"
                         print(output_path)
                         output_path.write_text(
                             extracted_text, encoding="utf-8")

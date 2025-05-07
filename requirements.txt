@@ -19,3 +19,6 @@ langchain
 pdfminer.six==20221105
 unstructured[pdf]
 unstructured[all-docs]
+vanna
+pandas
+sqlite3

@@ -303,7 +303,9 @@ if st.session_state.active_chat_id and st.session_state.chats:
                     user_prompt, active_chat_data["collection_name"])
             else:
                 response = chat_instance_for_reply.get_general_answer(
-                    user_prompt, active_chat_data["history"][:-1])
+                    user_prompt, active_chat_data["history"][:-1][-5:])
+                # response = chat_instance_for_reply.get_general_answer(
+                #     user_prompt, active_chat_data["history"][:-1])
 
             active_chat_data["history"].append(
                 {"role": "assistant", "content": response})

@@ -1,0 +1,47 @@
+/* style.css - Basic example styles */
+
+/* General body styling (Streamlit overrides a lot, so be specific) */
+body {
+    font-family: sans-serif;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    /* background-color: #f0f2f6; */ /* Example background */
+    padding: 10px;
+}
+
+[data-testid="stSidebar"] .stButton > button {
+    /* margin-bottom: 5px; */
+}
+
+
+/* Chat message styling */
+[data-testid="stChatMessage"] {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    max-width: 85%; /* Or adjust as needed */
+}
+
+/* User messages on one side, assistant on the other (more complex with Streamlit) */
+/* Streamlit's st.chat_message already handles basic alignment */
+
+/* Custom styling for user messages bubbles */
+/* This requires inspecting the generated HTML by Streamlit and targeting specific elements.
+   It's often easier to use st.markdown with unsafe_allow_html for custom chat bubbles,
+   or use a component from streamlit_chat or similar libraries if more control is needed.
+   The default st.chat_message is quite good.
+*/
+
+/* Example: Make chat input take full width */
+[data-testid="stChatInput"] {
+    /* background-color: #ffffff; */ /* Example background */
+}
+
+/* Hide Streamlit default header/footer if desired */
+/*
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+*/

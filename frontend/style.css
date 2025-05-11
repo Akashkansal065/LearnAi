@@ -1,0 +1,118 @@
+/* style.css - Basic example styles */
+
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    padding: 1rem;
+    /* background-color: #f0f2f6; */ /* Example background */
+}
+
+[data-testid="stSidebar"] .stButton > button {
+    margin-bottom: 8px; /* A bit more spacing */
+}
+
+[data-testid="stSidebar"] .stExpander {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+[data-testid="stSidebar"] .stExpander header {
+    font-weight: bold;
+}
+
+
+/* Chat message styling */
+[data-testid="stChatMessage"] {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem; /* Slightly more rounded */
+    margin-bottom: 0.75rem;
+    max-width: 80%; /* Default max width */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* User messages might be styled differently if needed via CSS, but Streamlit handles alignment */
+/* e.g., [data-testid="stChatMessage"] > div[data-testid="stMarkdownContainer"] p { ... } */
+
+
+/* Chat input area styling */
+[data-testid="stChatInput"] {
+    /* background-color: #ffffff; */
+    padding: 0.5rem;
+}
+[data-testid="stChatInput"] textarea {
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+}
+
+
+/* --- Responsive Adjustments --- */
+
+/* For tablets and smaller desktops */
+@media (max-width: 992px) {
+    [data-testid="stChatMessage"] {
+        max-width: 85%;
+    }
+    .stApp > header { /* Streamlit's main header */
+        padding: 0.5rem 1rem; /* Reduce padding */
+    }
+}
+
+/* For mobile devices */
+@media (max-width: 768px) {
+    body {
+        font-size: 15px; /* Slightly larger base for mobile readability */
+    }
+
+    [data-testid="stSidebar"] {
+        padding: 0.75rem;
+    }
+    /* Make sidebar buttons take full width if desired */
+    /* [data-testid="stSidebar"] .stButton > button {
+        width: 100%;
+    } */
+
+    [data-testid="stChatMessage"] {
+        padding: 0.6rem 0.8rem;
+        max-width: 90%; /* Allow chat messages to take more width */
+        font-size: 0.95em;
+    }
+
+    [data-testid="stHeader"] { /* For Streamlit's main app header */
+        font-size: 1.2em;
+    }
+
+    /* Adjust layout of columns if you use them heavily */
+    /* For example, make st.columns stack earlier or with more spacing */
+    div[data-testid="stHorizontalBlock"] {
+        /* This is a generic selector for blocks, be careful */
+        /* You might need more specific selectors if Streamlit's HTML changes */
+    }
+}
+
+/* For very small mobile devices */
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+    }
+    [data-testid="stChatMessage"] {
+        max-width: 95%;
+        margin-bottom: 0.5rem;
+    }
+    [data-testid="stSidebar"] .stButton > button {
+        font-size: 0.9em;
+        padding: 0.4em 0.6em;
+    }
+    /* Hide elements if they clutter too much on small screens, e.g. */
+    /* .optional-info-on-desktop { display: none; } */
+}
+
+/* Hide Streamlit default header/footer if desired - uncomment carefully */
+/*
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header[data-testid="stHeader"] { visibility: hidden; }
+*/

@@ -20,7 +20,7 @@ from models_fastapi import (
 )
 from chat_logic import (
     get_ollama_models_list_async, list_chroma_collections_async,
-    index_document_async, get_rag_answer_async, get_general_answer_async,
+    index_document, get_rag_answer_async, get_general_answer_async,
     DEFAULT_LLM_MODEL, DEFAULT_EMBEDDING_MODEL, DEFAULT_OCR_MODEL_NAME
 )
 # Import auth router and dependencies
@@ -92,7 +92,7 @@ async def index_file_endpoint(
             with open(temp_file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-            success, message = await index_document_async(
+            success, message = await index_document(
                 file_path=temp_file_path,
                 file_name=file.filename,
                 collection_name=collection_name,

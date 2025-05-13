@@ -145,6 +145,13 @@ async def fetch_ollama_models_api():
 
 async def call_index_file_api(payload, files_data):
     token_value = token()  # Assuming you have a function to get the token
+    # Fine-tuned timeouts
+    timeout = httpx.Timeout(
+        connect=30.0,  # Time to establish connection
+        read=2300.0,    # Time to wait for server response
+        write=2300.0,   # Time to upload file
+        pool=2310.0     # Total timeout for the request
+    )
     async with httpx.AsyncClient(timeout=300.0, base_url=FASTAPI_BASE_URL) as client:
         # Separate query parameters (collection_name) and form data
         query_params = {
@@ -176,7 +183,7 @@ async def call_index_file_api(payload, files_data):
 
 
 async def call_chat_api(endpoint_url_suffix, payload):
-    async with httpx.AsyncClient(timeout=120.0, base_url=FASTAPI_BASE_URL) as client:
+    async with httpx.AsyncClient(timeout=300.0, base_url=FASTAPI_BASE_URL) as client:
         # Browser should automatically send the HttpOnly session_token cookie
         token_value = token()
         api_response = await client.post(endpoint_url_suffix, json=payload,
@@ -411,10 +418,12 @@ else:  # Authenticated
                         active_chat_data["doc_name"] = None
                         st.success("Switched to General Chat mode.")
                         st.rerun()
-
+                allowed_types = ["pdf", "txt", "png",
+                                 "jpg", "jpeg", "bmp", "gif", "webp"]
                 st.caption("Process New Document(s)")
-                uploaded_files = st.file_uploader("Upload files:", type=[
-                                                  "pdf", "txt"], key=f"upload_{st.session_state.active_chat_id}", accept_multiple_files=True)
+                uploaded_files = st.file_uploader(
+                    "Upload files:", type=allowed_types,
+                    key=f"upload_{st.session_state.active_chat_id}", accept_multiple_files=True)
                 if uploaded_files:
                     sugg_name = os.path.splitext(uploaded_files[0].name)[0].replace(
                         " ", "_") + ("_batch" if len(uploaded_files) > 1 else "")
@@ -422,9 +431,10 @@ else:  # Authenticated
                         "New Collection Name:", value=sugg_name, key=f"coll_name_{st.session_state.active_chat_id}")
 
                     processing_mode_for_pdfs = "text"
-                    if any(f.name.lower().endswith(".pdf") for f in uploaded_files):
+                    if any((f.name.lower().endswith(".pdf") or f.name.lower().endswith(".png") or f.name.lower().endswith(".jpg") or f.name.lower().endswith(".jpeg")) for f in uploaded_files):
                         pdf_mode_sel = st.radio("PDF Mode:", ("Text-Only", "OCR"), index=0,
-                                                key=f"pdf_mode_{st.session_state.active_chat_id}", horizontal=True)
+                                                key=f"pdf_mode_{st.session_state.active_chat_id}",
+                                                horizontal=True)
                         processing_mode_for_pdfs = "ocr" if "OCR" in pdf_mode_sel else "text"
 
                     if st.button("Process Uploaded File(s)", use_container_width=True, key=f"proc_btn_{st.session_state.active_chat_id}"):
@@ -439,7 +449,8 @@ else:  # Authenticated
                                 for up_file in uploaded_files:
                                     file_ext = os.path.splitext(
                                         up_file.name)[1].lower()
-                                    current_file_mode = processing_mode_for_pdfs if file_ext == ".pdf" else "text"
+                                    current_file_mode = processing_mode_for_pdfs if file_ext in [
+                                        ".pdf", ".png", ".jpg", ".jpeg"] else "text"
 
                                     payload = {
                                         "collection_name": collection_name_input,

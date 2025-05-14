@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import httpx
 import re
 import time
@@ -14,11 +15,11 @@ import asyncio  # Added for running async functions
 # --- Page Configuration ---
 st.set_page_config(page_title="Advanced Chat UI - FastAPI Backend",
                    layout="wide", initial_sidebar_state="expanded")
-
+load_dotenv()  # Load environment variables from .env file
 # --- Environment & API Base URL ---
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8080")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8081")
 STREAMLIT_SERVER_ADDRESS = os.getenv(
-    "STREAMLIT_SERVER_ADDRESS", "http://localhost:8501")
+    "STREAMLIT_SERVER_ADDRESS", "http://localhost:8080")
 
 
 # --- Load Custom CSS ---
@@ -34,26 +35,20 @@ def load_css(file_name):
 
 load_css("style.css")
 
+DEFAULT_LLM_MODEL_ST = "qwen3:8b"
+DEFAULT_EMBEDDING_MODEL_ST = "nomic-embed-text"
+DEFAULT_OCR_MODEL_ST = "llava:latest"
 
-# --- Session State Initialization ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
 if "auth_token" not in st.session_state:
     st.session_state.auth_token = None
-# No need to store auth_token or cookies_for_api if relying solely on HttpOnly cookies
-# and FastAPI handles them correctly with browser.
-
 if "chats" not in st.session_state:
     st.session_state.chats = {}
 if "active_chat_id" not in st.session_state:
     st.session_state.active_chat_id = None
-
-DEFAULT_LLM_MODEL_ST = "llama3:8b"
-DEFAULT_EMBEDDING_MODEL_ST = "nomic-embed-text"
-DEFAULT_OCR_MODEL_ST = "llava:latest"
-
 if "selected_llm_model" not in st.session_state:
     st.session_state.selected_llm_model = DEFAULT_LLM_MODEL_ST
 if "selected_embedding_model" not in st.session_state:
@@ -206,14 +201,12 @@ async def fetch_chroma_collections_api():
         return response.json().get("collections", [])
 
 
-# --- Authentication Check ---
 def attempt_auth_verification():
     """Verifies authentication by calling /users/me."""
     print("attempt_auth_verification: Starting")  # Debug log
     print("Fetching user data...")  # Debug log
-    # token_value = asyncio.run(token())
     token_value = token()
-    time.sleep(0.5)  # Add a 0.5 second delay (adjust as needed)
+    time.sleep(0.5)
     if not st.session_state.get("authenticated", False):
         print("attempt_auth_verification: Not currently authenticated, calling /users/me")
         user_data = asyncio.run(fetch_user_me_api(token_value))

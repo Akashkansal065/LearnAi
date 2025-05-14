@@ -6,6 +6,8 @@ import time
 import traceback
 import asyncio
 from typing import Dict, List
+from dotenv import load_dotenv
+import httpx
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 import ollama  # For listing models
 
@@ -23,6 +25,7 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_chroma import Chroma
 from chromadb import PersistentClient
 
+load_dotenv()  # Load environment variables from .env file
 try:
 
     OCR_PROCESSOR_AVAILABLE = True
@@ -43,7 +46,8 @@ except ImportError:
 DEFAULT_EMBEDDING_MODEL = "nomic-embed-text"
 DEFAULT_LLM_MODEL = 'llama3:8b'
 DEFAULT_OCR_MODEL_NAME = 'llava:latest'
-CHROMA_STORE_PATH = './chroma_store'  # Ensure this path is writable
+CHROMA_STORE_PATH = './chroma_store'
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11")
 
 # Create Chroma directory if it doesn't exist
 if not os.path.exists(CHROMA_STORE_PATH):
@@ -69,11 +73,25 @@ def sanitize_collection_name(name: str) -> str:
 # --- Helper functions (can be async if they do I/O) ---
 
 
+# async def get_ollama_models_list_async():
+#     try:
+#         models_data = await asyncio.to_thread(ollama.list)
+#         print(f"Fetched {len(models_data.models)} models from Ollama.")
+#         return [model.model for model in models_data.models]
+#     except Exception as e:
+#         print(f"Error fetching Ollama models: {e}. Returning empty list.")
+#         return []
+
+
 async def get_ollama_models_list_async():
     try:
-        models_data = await asyncio.to_thread(ollama.list)
-        print(f"Fetched {len(models_data.models)} models from Ollama.")
-        return [model.model for model in models_data.models]
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
+            response.raise_for_status()
+            models_data = response.json()
+            print(
+                f"Fetched {len(models_data['models'])} models from remote Ollama.")
+            return [model["name"] for model in models_data["models"]]
     except Exception as e:
         print(f"Error fetching Ollama models: {e}. Returning empty list.")
         return []
@@ -91,42 +109,42 @@ async def list_chroma_collections_async():
         return []
 
 
-def list_openai_llm_models_static():
-    return ["gpt-4-turbo", "gpt-4", "gpt-3.5-turbo", "gpt-4o"]
+# def list_openai_llm_models_static():
+#     return ["gpt-4-turbo", "gpt-4", "gpt-3.5-turbo", "gpt-4o"]
 
 
-def list_openai_embedding_models_static():
-    return ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"]
+# def list_openai_embedding_models_static():
+#     return ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"]
 
 
-def get_llm_instance(provider: str, model_name: str, temperature: float = 0.1):
-    """Instantiates and returns an LLM based on the provider."""
-    print(
-        f"Getting LLM instance for provider: {provider}, model: {model_name}")
-    if provider == "openai":
-        if not os.getenv("OPENAI_API_KEY"):
-            raise ValueError(
-                "OPENAI_API_KEY environment variable not set for OpenAI provider.")
-        return ChatOpenAI(model_name=model_name, temperature=temperature)
-    elif provider == "ollama":
-        return ChatOllama(model=model_name, temperature=temperature)
-    else:
-        raise ValueError(f"Unsupported LLM provider: {provider}")
+# def get_llm_instance(provider: str, model_name: str, temperature: float = 0.1):
+#     """Instantiates and returns an LLM based on the provider."""
+#     print(
+#         f"Getting LLM instance for provider: {provider}, model: {model_name}")
+#     if provider == "openai":
+#         if not os.getenv("OPENAI_API_KEY"):
+#             raise ValueError(
+#                 "OPENAI_API_KEY environment variable not set for OpenAI provider.")
+#         return ChatOpenAI(model_name=model_name, temperature=temperature)
+#     elif provider == "ollama":
+#         return ChatOllama(model=model_name, temperature=temperature, base_url=OLLAMA_BASE_URL)
+#     else:
+#         raise ValueError(f"Unsupported LLM provider: {provider}")
 
 
-def get_embedding_instance(provider: str, model_name: str):
-    """Instantiates and returns an embedding model based on the provider."""
-    print(
-        f"Getting Embedding instance for provider: {provider}, model: {model_name}")
-    if provider == "openai":
-        if not os.getenv("OPENAI_API_KEY"):
-            raise ValueError(
-                "OPENAI_API_KEY environment variable not set for OpenAI provider.")
-        return OpenAIEmbeddings(model=model_name)
-    elif provider == "ollama":
-        return OllamaEmbeddings(model=model_name)
-    else:
-        raise ValueError(f"Unsupported Embedding provider: {provider}")
+# def get_embedding_instance(provider: str, model_name: str):
+#     """Instantiates and returns an embedding model based on the provider."""
+#     print(
+#         f"Getting Embedding instance for provider: {provider}, model: {model_name}")
+#     if provider == "openai":
+#         if not os.getenv("OPENAI_API_KEY"):
+#             raise ValueError(
+#                 "OPENAI_API_KEY environment variable not set for OpenAI provider.")
+#         return OpenAIEmbeddings(model=model_name)
+#     elif provider == "ollama":
+#         return OllamaEmbeddings(model=model_name, base_url=OLLAMA_BASE_URL)
+#     else:
+#         raise ValueError(f"Unsupported Embedding provider: {provider}")
 
 
 async def index_document(
@@ -227,7 +245,8 @@ async def index_document(
         print(f"Split into {len(chunks)} chunks.")
 
         print(f"Initializing embeddings with model: {embedding_model_name}")
-        embeddings = OllamaEmbeddings(model=embedding_model_name)
+        embeddings = OllamaEmbeddings(
+            model=embedding_model_name, base_url=OLLAMA_BASE_URL)
 
         print(
             f"Storing chunks in Chroma collection '{collection_name}' at {CHROMA_STORE_PATH}")
@@ -262,9 +281,11 @@ async def get_rag_answer_async(
 
     try:
         # Assume sync components run in threadpool if needed
-        embeddings = OllamaEmbeddings(model=embedding_model_name)
+        # print(OLLAMA_BASE_URL)
+        embeddings = OllamaEmbeddings(
+            model=embedding_model_name, base_url=OLLAMA_BASE_URL)
         vectorstore = await asyncio.to_thread(
-            Chroma,  # Instantiate Chroma sync class in thread
+            Chroma,
             persist_directory=chroma_path,
             embedding_function=embeddings,
             collection_name=collection_name
@@ -290,7 +311,8 @@ Question: {question}
 Answer:"""
         prompt = ChatPromptTemplate.from_template(template)
         # Assume ChatOllama supports async via .ainvoke
-        llm = ChatOllama(model=llm_model_name, temperature=0.1)
+        llm = ChatOllama(model=llm_model_name, temperature=0.1,
+                         base_url=OLLAMA_BASE_URL)
         rag_chain = ({"context": retriever, "question": RunnablePassthrough(
         )} | prompt | llm | StrOutputParser())
 
@@ -314,9 +336,11 @@ async def get_general_answer_async(
     print(f"Question: '{question}'")
     try:
         # Assume async support
-        llm = ChatOllama(model=llm_model_name, temperature=0.1)
+        llm = ChatOllama(model=llm_model_name, temperature=0.1,
+                         base_url=OLLAMA_BASE_URL)
         general_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a helpful AI assistant. Answer the user's question based on the conversation history if relevant."),
+            ("system", """You are a helpful AI assistant. Answer the user's
+             question based on the conversation history if relevant."""),
             MessagesPlaceholder(variable_name="chat_history_for_prompt"),
             ("human", "{current_question_for_prompt}")
         ])

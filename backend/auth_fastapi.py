@@ -1,3 +1,6 @@
+from pathlib import Path
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from fastapi import APIRouter
 import os
 from datetime import datetime, timedelta, timezone
@@ -50,6 +53,9 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
     )
 else:
     print("Warning: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET not set. Google OAuth will not work.")
+ROOT_DIR_PROJECT = Path(__file__).parent
+print(ROOT_DIR_PROJECT)
+templates = Jinja2Templates(directory=ROOT_DIR_PROJECT)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -153,19 +159,25 @@ async def auth_google_callback(request: Request):
         expires_delta=access_token_expires
     )
     streamlit_base_url = os.getenv(
-        "STREAMLIT_SERVER_ADDRESS", "http://localhost:8501")
+        "STREAMLIT_SERVER_ADDRESS", "http://localhost:8080")
     request.session["user"] = access_token
     request.session["session_token"] = access_token
-    response = RedirectResponse(url=streamlit_base_url)
+    response = RedirectResponse(url=streamlit_base_url, status_code=302)
     response.set_cookie(
         key="session_token",
         value=access_token,
         httponly=False,
         max_age=int(access_token_expires.total_seconds()),
         samesite="Lax",  # Or "Strict" if FastAPI and Streamlit are same-site
-        # secure=True, # Set to True if served over HTTPS
+        secure=False,  # Set to True if served over HTTPS
     )
-    return response
+    return templates.TemplateResponse(
+        "welcome.html",
+        {"request": request, "token": access_token,
+         "user": user_info_google, "redirect_url": streamlit_base_url},
+
+    )
+    # return response
 
 
 @router.post("/logout")

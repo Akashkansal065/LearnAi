@@ -1,0 +1,12 @@
+<!-- welcome.html -->
+<html>
+  <head>
+    <script>
+      document.cookie = "session_token={{ token }}; path=/;";
+      window.location.href = "{{ redirect_url}}";
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+</html>

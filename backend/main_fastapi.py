@@ -42,8 +42,8 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv(
 # Adjust origins as necessary for your Streamlit app's deployment
 origins = [
     os.getenv("STREAMLIT_SERVER_ADDRESS",
-              "http://localhost:8501"),  # Streamlit default
-    "http://127.0.0.1:8501",
+              "http://localhost:8080"),  # Streamlit default
+    "http://127.0.0.1:8080",
     # Add other origins if needed, e.g., your production Streamlit URL
 ]
 app.add_middleware(
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     #     #     #     #
     #     #     #     # uvicorn main:app --reload --port 8080 --host 0.0.0.0 --ssl-keyfile "/home/akash.kansal/documents/github/dp-core-automation/certkey.pem" --ssl-certfile "/home/akash.kansal/documents/github/dp-core-automation/cert.pem"
     # uvicorn.run("main:app", host="0.0.0.0", port=8088, reload=True)  # , workers=4)
-    uvicorn.run("main_fastapi:app", host="0.0.0.0", port=8080, reload=True,
+    uvicorn.run("main_fastapi:app", host="0.0.0.0", port=8081, reload=True,
                 # ssl_keyfile="./certkey.pem",
                 # ssl_certfile="./cert.pem"
                 )  # , workers=4)

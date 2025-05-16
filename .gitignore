@@ -2,3 +2,5 @@
 *.jpg
 /chroma_store
 *.sqlite3
+.env
+*.bin

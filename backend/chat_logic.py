@@ -48,6 +48,8 @@ DEFAULT_LLM_MODEL = 'llama3:8b'
 DEFAULT_OCR_MODEL_NAME = 'llava:latest'
 CHROMA_STORE_PATH = './chroma_store'
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11")
+print(OLLAMA_BASE_URL)
+
 
 # Create Chroma directory if it doesn't exist
 if not os.path.exists(CHROMA_STORE_PATH):
@@ -219,6 +221,7 @@ async def index_document(
                 loader = PyPDFLoader(file_path)
                 loaded_docs = await asyncio.to_thread(loader.load)
                 documents = loaded_docs
+                print(documents)
 
         elif file_extension == ".txt":
             print("File type: TXT. Using TextLoader.")
@@ -341,6 +344,13 @@ async def get_general_answer_async(
         general_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a helpful AI assistant. Answer the user's
              question based on the conversation history if relevant."""),
+            #     ("human", "You are a helpful assistant."),
+            #     ("human", "Here is the conversation history:"),
+            #     ("human", "{chat_history_for_prompt}"),
+            #     ("human", "Now, here is the user's question:"),
+            #     ("human", "{current_question_for_prompt}"),
+            #     ("human", "Please answer the question based on the conversation history.")
+            # ])
             MessagesPlaceholder(variable_name="chat_history_for_prompt"),
             ("human", "{current_question_for_prompt}")
         ])

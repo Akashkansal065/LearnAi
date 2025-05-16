@@ -35,7 +35,6 @@ wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 tools = [wikipedia]
 llm_with_tools = llm.bind_tools(tools)
 print("LLM with tools initialized.")
-# Create Prompt Tempelate with history
 
 prompt = ChatPromptTemplate.from_messages([
     SystemMessagePromptTemplate.from_template("You are a helpful assistant."),

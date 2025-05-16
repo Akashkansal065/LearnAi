@@ -81,7 +81,7 @@ class Chat:
                     print("Using PyPDFLoader (text mode)...")
                     loader = PyPDFLoader(file_path)
                     documents = loader.load()
-                elif file_extension == ".txt":
+                elif file_extension in [".txt", ".md"]:
                     print("Using TextLoader...")
                     # Specify encoding
                     loader = TextLoader(file_path, encoding='utf-8')
@@ -91,7 +91,7 @@ class Chat:
                         f"Error: Unsupported file type '{file_extension}' for text mode.")
                     return False
             elif processing_mode == "ocr":
-                if file_extension == ".pdf":
+                if file_extension.lower() == ".pdf" or file_extension.lower() in [".pdf", ".jpg", ".jpeg", ".png"]:
                     print("Using UnstructuredPDFLoader (OCR mode)...")
                     # Requires tesseract to be installed and potentially in PATH
                     # "hi_res" strategy uses detectron2 if available, falls back to Tesseract
@@ -220,7 +220,7 @@ class Chat:
                 f"Initializing embeddings ({EMBEDDING_MODEL}) for retrieval.")
             embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL)
             vectorstore = Chroma(
-                persist_directory=CHROMA_PATH,
+                persist_directory='./chroma_store',
                 embedding_function=embeddings, collection_name=collection_name
             )
             print(collection_name)
@@ -232,6 +232,7 @@ class Chat:
             retriever = vectorstore.as_retriever(
                 search_type="mmr", search_kwargs={"k": 6, "fetch_k": 10, "lambda_mult": 0.5}
             )
+            print(retriever)
 
             print("Retriever created.")
             # 4. Define RAG Prompt Template

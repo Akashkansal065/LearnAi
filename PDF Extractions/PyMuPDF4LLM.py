@@ -1,3 +1,4 @@
+import fitz  # PyMuPDF
 import json
 import pathlib
 import pymupdf4llm
@@ -45,7 +46,7 @@ md_text_images = pymupdf4llm.to_markdown(doc=path,
 md_text_chunks = pymupdf4llm.to_markdown(doc=path,
                                          pages=[0, 1, 2],
                                          page_chunks=True)
-# print(md_text_chunks[0])  # Print the first chunk
+print(md_text_chunks[0])  # Print the first chunk
 
 # Use Case 7: Word-by-Word Extraction
 md_text_words = pymupdf4llm.to_markdown(doc=path,
@@ -66,3 +67,28 @@ md_text_tables = pymupdf4llm.to_markdown(doc=path,
                                          )
 print(md_text_tables)
 # Not working great
+
+
+def get_pdf_title(file_path):
+    try:
+        # Open the PDF file
+        doc = fitz.open(file_path)
+
+        # Extract the metadata of the PDF
+        metadata = doc.metadata
+
+        # Get the title from the metadata
+        title = metadata.get("title", "No title found")
+
+        # Optionally, print other metadata if needed
+        print(f"Title: {title}")
+        return title
+
+    except Exception as e:
+        print(f"Error processing the PDF: {e}")
+        return None
+
+
+# Example usage
+file_path = "/path/to/your/file.pdf"
+pdf_title = get_pdf_title(file_path)
